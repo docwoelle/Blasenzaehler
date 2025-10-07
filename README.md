@@ -19,6 +19,7 @@ Benötigt werden:
 
 Zum platzsparenden Aufbau bietet sich eine Wäscheklammer aus Kunststoff an.
 Es werden in die Klammer in eine Backe zwei Löcher à 3mm gebohrt. An der Lichtschranke werden beide Dioden tiefer gesetzt und die Kunststoffhalterung entfernt, so dass die Dioden in den zuvor gebohrten Löchern bündig anliegen.
+In die gegenüberliegende Backe der Klammer wird etwas Alufolie eingeklebt.
 
 Verdrahtung:
 

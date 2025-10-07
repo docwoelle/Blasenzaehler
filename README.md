@@ -13,6 +13,7 @@ Weiter steht über den verbauten Webserver eine Möglichkeit zur Verfügung, die
 Benötigt werden:
 
 1x Wemos D1 mini (o.ä.)
+
 1x TCRT5000 Reflexlichtschranke (Modul)
 
 
@@ -22,7 +23,10 @@ Es werden in die Klammer in eine Backe zwei Löcher à 3mm gebohrt. An der Licht
 Verdrahtung:
 
 TCRT5000-Modul // Wemos D1 mini
+
 VCC - 3v3
+
 GND - GND
+
 AO  - A0
 

@@ -5,10 +5,16 @@
 #include <ArduinoOTA.h>
 #include <LittleFS.h>
 #include <TimeLib.h>
+#include <OneWire.h>
+#include <DallasTemperature.h>
 
 const int FW_VERSION = 1;
 const char* fwUrlBase = "http://192.168.2.22/esp/";
 #define LED D5
+#define ONE_WIRE_BUS D6
+
+OneWire oneWire(ONE_WIRE_BUS);
+DallasTemperature sensors(&oneWire);
 
 WiFiManager wm;
 
@@ -16,7 +22,7 @@ WiFiManager wm;
 #define LONGDELAY 7000 // ms
 uint8_t nextState = 0, fail = 0;
 uint16_t IN1, LS1, BS1, OLDSTATUS1;
-uint32_t mil = 0, diffms = 0, lastok = 0, nextstage = 0;
+uint32_t mil = 0, diffms = 0, last1820 = 0, nextstage = 0;
 uint32_t wertalt = 0, wertdiff = 0, wertehz = 0;
 long scantime1, updatets, id, lastDebounce1, lastDebounce2, DD1 = 100, id2;
 int updateinterval = 60000;
@@ -32,7 +38,7 @@ String cnt = "";
 
 float blas[] = {0, 0, 0, 0, 0};
 uint16_t blasval[] = {0, 0, 0, 0, 0};
-
+float tempbz = 0;
 volatile uint32_t mqtt_bla = 0;
 
 uint32_t last = 0;
@@ -105,8 +111,9 @@ void setup() {
   delay(200);
   pinMode(LED, OUTPUT);
   LittleFS.begin();
+  sensors.begin();
   Serial.println("\nStarte Blasenzaehler...");
- // wm.resetSettings();
+  // wm.resetSettings();
   wm.setConfigPortalBlocking(false);
 
   if (!wm.autoConnect("Blasenzaehler")) {
@@ -155,11 +162,6 @@ void setup() {
   }
 }
 
-
-/*#######################################################
-  ############## LOOP ##################################
-  #######################################################*/
-
 // aktuelles Minimum der letzten <sekunden> Sekunden berechnen
 int getsecMin() {
   int m = 32767;
@@ -169,6 +171,10 @@ int getsecMin() {
   return m * faktor;
 }
 
+
+/*#######################################################
+  ############## LOOP ##################################
+  #######################################################*/
 void loop() {
   if (fwcheck) {
     checkForUpdates();
@@ -193,6 +199,9 @@ void loop() {
     }
   }
 
+
+
+
   /*
     ##################################################################
     ######################## BLASEN ##################################
@@ -214,6 +223,24 @@ void loop() {
       sekCounter = 0;
     }
   }
+
+
+  /* 
+    ##################################################################
+    ######################## TEMPERATUR ##############################
+    ##################################################################
+ */
+  if (millis() - last1820 > 60000) {  // nur alle 60s lesen
+    sensors.requestTemperatures(); // Send the command to get temperatures
+    float tempC = sensors.getTempCByIndex(0);
+    last1820 = millis();
+    if (tempC != DEVICE_DISCONNECTED_C)
+    {
+      tempbz = tempC;
+      putmqtttemp();
+    }
+  }
+
 
   // Entprellen
   if (IN1 != LS1) {

@@ -1,4 +1,3 @@
-
 String getContentType(String filename) {
   if (filename.endsWith(".htm")) return "text/html";
   else if (filename.endsWith(".html")) return "text/html";
@@ -155,7 +154,7 @@ void handleRoot() {
   server.sendContent(
     "<!DOCTYPE HTML><html><head><meta name='viewport' content='width=device-width, initial-scale=1'> <title>Blasenzaehler</title><style>#timestamp { text-align: center; font-size: 0.95em; color: #444; margin-top: 6px; } body { background-color: #f7f7f7; color: #333; font-family: 'Segoe UI', Verdana, sans-serif; margin: 0; padding: 0; } h2 { text-align: center; background-color: #0080ff; color: white; padding: 12px 0; margin: 0 0 15px 0; font-weight: 500; box-shadow: 0 2px 4px rgba(0,0,0,0.2); } table { width: 90%; max-width: 420px; margin: auto; border-collapse: collapse; font-size: 1.05em; background-color: white; border-radius: 10px; overflow: hidden; box-shadow: 0 0 8px rgba(0,0,0,0.1); } th, td { padding: 10px 8px; text-align: left; border-bottom: 1px solid #ddd; } th { background-color: #e8f0ff; font-weight: 600; } tr:last-child td { border-bottom: none; } td b { color: #0066cc; } .footer { text-align: center; margin: 15px 0; font-size: 0.9em; color: #666; } button { display: block; margin: 20px auto; background-color: #0080ff; color: white; border: none; border-radius: 8px; padding: 12px 24px; font-size: 1.1em; box-shadow: 0 3px 6px rgba(0,0,0,0.2); cursor: pointer; transition: background 0.2s ease; } button:hover { background-color: #0096ff; } </style></head><body>"
   );
-  String content = "<h2>"+(String)website+"</h2><center>Alter der Blasen zur Folgeblase in s</center><table>";
+  String content = "<h2>" + (String)website + "</h2><center>Alter der Blasen zur Folgeblase in s</center><table>";
   //  content += "<tr><td align=center><b>#</b></td><td align=right align=center><b>Blasenalter</b></td><td align=center valign=bottom><b>max.<br>Messwert</b></td></tr>";
   // Zeitspanne über 5 Blasen (von letzter bis 5. letzter)
 
@@ -169,6 +168,7 @@ void handleRoot() {
     <tr><td><b>Schnitt</b></td><td id="schnitt"></td><td></td></tr>
     <tr><td><b>Blasen/min</b></td><td id="bpm"></td><td></td></tr>
     <tr><td><b>Blasen/h</b></td><td id="bps"></td><td></td></tr>
+    <tr><td><b>Temperatur</b></td><td id="temp"></td><td></td></tr>
   </table><div id="timestamp">Letztes Update: -</div><br>
 <center><a href='/config'>Konfiguration</a></center><br>
   <script>
@@ -194,12 +194,15 @@ void handleRoot() {
         document.getElementById('v1').textContent = '(' + v[4] + ')';
 
         document.getElementById('schnitt').textContent = data.schnitt.toFixed(1);
-        document.getElementById('bpm').textContent = data.bpm.toFixed(1);
-        document.getElementById('bps').textContent = data.bps.toFixed(1);
         document.getElementById('ar').textContent = data.ar.toFixed(0);
+        document.getElementById('temp').innerHTML = data.temp.toFixed(1)+'&deg;C';
         document.getElementById('minimum').textContent = data.minimum.toFixed(0);
         document.getElementById('minimumsw').textContent = data.minimumsw.toFixed(0);
         document.getElementById('timestamp').textContent = 'Letztes Update: ' + formatDate(new Date());
+        if (null!=data.bpm) {
+        document.getElementById('bpm').textContent = data.bpm.toFixed(1);
+        document.getElementById('bps').textContent = data.bps.toFixed(1);
+        }
       } catch(e) {
         console.log("Fehler beim Abrufen:", e);
       }
@@ -210,7 +213,7 @@ void handleRoot() {
   </script>)rawliteral";
 
 
-  content = content + "<br><br>";
+  content = content + "<br>";
   content = content + "<h2>Analoge Messwerte</h2>";
   content = content + "<center>Aktueller Messwert: <span id='ar' style='display:inline'></span><br>";
   content = content + (String)sekunden + "s-Schwellwert: <span id='minimumsw' style='display:inline'></span>";
@@ -249,7 +252,7 @@ void handleDataJson() {
   float blasenProMin = 60000.0 / (intervall / 4.0);
   float blasenProStd = 3600000.0 / (intervall / 4.0);
 
-  DynamicJsonDocument doc(256);
+  DynamicJsonDocument doc(512);
   JsonArray abstaende = doc.createNestedArray("abstaende");
 
   // 5 Einzelabstände
@@ -266,12 +269,13 @@ void handleDataJson() {
   werte.add(blasval[1]);
   werte.add(blasval[0]);
 
+  doc["ar"] = ar;
+  doc["temp"] = tempbz;
+  doc["minimumsw"] = getsecMin();
+  doc["minimum"] = getsecMin() / faktor;
   doc["schnitt"] = schnitt;
   doc["bpm"] = blasenProMin;
   doc["bps"] = blasenProStd;
-  doc["ar"] = ar;
-  doc["minimumsw"] = getsecMin();
-  doc["minimum"] = getsecMin() / faktor;
   String json;
   serializeJson(doc, json);
   server.send(200, "application/json", json);

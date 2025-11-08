@@ -3,7 +3,7 @@
 
 static char pubtopic[128];
 static char subtopic[128];
-static char deviceID[9];
+static char deviceID[13];
 
 
 WiFiClient espClient;
@@ -11,11 +11,12 @@ PubSubClient mqttclient(espClient);
 
 void generateDeviceID()
 {
-  char flashChipId[6 + 1];
-  sprintf(flashChipId, "%06x", ESP.getFlashChipId());
-  snprintf(deviceID, sizeof(deviceID), "%06x%s",
-           ESP.getChipId(), flashChipId + strlen(flashChipId) - 2);
+  unsigned long chip = ESP.getChipId();
+  unsigned long flash = ESP.getFlashChipId();
+  snprintf(deviceID, sizeof(deviceID), "%06lx%02lx",
+           chip & 0xFFFFFF, flash & 0xFF);
 }
+
 
 bool check_online()
 {
@@ -26,9 +27,6 @@ bool check_online()
 bool MQTT_reconnect()
 {
   char clientID[128];
-  static char *willPayload = "{\"_type\":\"lwt\",\"tst\":0}";
-  bool willRetain = false;
-  char *willTopic = pubtopic;
   bool mqtt_connected = false;
   snprintf(clientID, sizeof(clientID), "micro-wifi-%s", deviceID);
   Serial.print("Attempting to connect to MQTT as ");
@@ -55,23 +53,51 @@ void callback(char* topic, byte * payload, unsigned int length)
 
 void prepMQTT() {
   generateDeviceID();
-  snprintf(pubtopic, sizeof(pubtopic), "%s/%s", BASETOPIC, "Blasen");
-  snprintf(subtopic, sizeof(subtopic), "%s/%s/cmd", BASETOPIC, deviceID);
+  snprintf(pubtopic, sizeof(pubtopic), "%s/%s", BASETOPIC.c_str(), "Blasen");
+  snprintf(subtopic, sizeof(subtopic), "%s/%s/cmd", BASETOPIC.c_str(), deviceID);
   mqttclient.setServer(mqtt_server, mqtt_port);
   mqttclient.setCallback(callback);
 }
 
 static void putmqtt()
 {
+  if (mqtt_server == "") return;
   boolean rc;
+  snprintf(pubtopic, sizeof(pubtopic), "%s/%s", BASETOPIC.c_str(), "Blasen");
   MQTT_reconnect();
   is_online = check_online();
   char payload[20];
   Serial.print("Status: ");
   Serial.println(is_online ? "Online" : "OFFline");
-  String pls = ""+(String)mqtt_bla;
+  String pls = "" + (String)mqtt_bla;
   Serial.println("Payload: " + pls);
-  pls.toCharArray(payload,20);
+  pls.toCharArray(payload, 20);
+
+  if (is_online) {
+    if ((rc = mqttclient.publish(pubtopic, payload, true)) == false) {
+    }
+    Serial.print(" publish = ");
+    Serial.println(rc);
+    mqtt_bla = 0;
+    if (mqttclient.connected())
+      mqttclient.loop();
+  } else {
+  }
+}
+
+static void putmqtttemp()
+{
+  if (mqtt_server == "") return;
+  boolean rc;
+  snprintf(pubtopic, sizeof(pubtopic), "%s/%s", BASETOPIC.c_str(), "Temperatur");
+  MQTT_reconnect();
+  is_online = check_online();
+  char payload[20];
+  Serial.print("Status: ");
+  Serial.println(is_online ? "Online" : "OFFline");
+  String pls = "" + (String)tempbz;
+  Serial.println("Payload: " + pls);
+  pls.toCharArray(payload, 20);
 
   if (is_online) {
     if ((rc = mqttclient.publish(pubtopic, payload, true)) == false) {
